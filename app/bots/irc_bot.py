@@ -202,7 +202,7 @@ class IRC:
         if entry_type == "message":
             message = data.get("message")
             users = data.get("users")
-            msg = MessageParser.parse_outgoing_message(message=message)  # parse message string to me correct format
+            msg = MessageParser.parse_outgoing_messages(message=message)  # parse message string to me correct format
 
             status = self.send_message(users=users, msg=message)
 

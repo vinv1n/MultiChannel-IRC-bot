@@ -5,15 +5,30 @@ This have to make it's own database to handle stuff
 
 import logging
 import threading
-import base64
 
 # flask stuffenings
 from flask import Flask, render_template
 from flask_restful import Api, Resource
 
+# bot handling utility
 from queue import Queue
-from app.irc_bot import run_irc
+from app.bots.irc_bot import run_irc
 
+# resources
+from app.resources.messages import Messages, SingleMessage, SingleMessageStatus
+
+logger = logging.getLogger(__name__)
+handler = logging.StreamHandler()
+formatter = logging.Formatter(
+        '%(asctime)-15s:%(name)-s:%(levelname)s %(message)s', datefmt="%a, %d %b %Y %H:%M:%S")
+handler.setFormatter(formatter)
+handler.setLevel(logging.INFO)
+
+logger.addHandler(handler)
+
+
+
+logger = logging.getLogger(__name__)
 
 def create_api():
 
@@ -22,39 +37,22 @@ def create_api():
 
     api = Api(app)
 
-    # Api resources
-    api.add_resource(Messages, "/messages/<string:data>")
-    api.add_resource(SingleMessage, "/messages/<int:id>")
-    api.add_resource(SingleMessageStatus, "/messages/<int:id>/status")
-
     # start irc thread
     bot = BOT_Launch()
     bot.create_thread()
-    print("is running")
+
+    # Api resources
+    api.add_resource(Messages, "/messages/<string:data>",
+        resource_class_kwargs={"bot": bot}
+    )
+    api.add_resource(SingleMessage, "/messages/<int:id>",
+        resource_class_kwargs={"bot": bot}
+    )
+    api.add_resource(SingleMessageStatus, "/messages/<int:id>/status",
+        resource_class_kwargs={"bot": bot}
+    )
+
     return app
-
-
-class Messages(Resource):
-    """
-    Send message, data as base64 encoded json
-    """
-
-    def post(self, data):
-        pass
-
-
-class SingleMessage(Resource):
-
-    def get(self, id):
-        pass
-
-
-class SingleMessageStatus(Resource):
-    """
-    Get one sent message
-    """
-    def get(self, id):
-        pass
 
 
 class BOT_Launch:
