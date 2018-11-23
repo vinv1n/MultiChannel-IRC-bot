@@ -42,13 +42,13 @@ def create_api():
     bot.create_thread()
 
     # Api resources
-    api.add_resource(Messages, "/messages/<string:data>",
+    api.add_resource(Messages, "/messages/send",
         resource_class_kwargs={"bot": bot}
     )
-    api.add_resource(SingleMessage, "/messages/<int:id>",
+    api.add_resource(SingleMessage, "/messages/<string:id>",
         resource_class_kwargs={"bot": bot}
     )
-    api.add_resource(SingleMessageStatus, "/messages/<int:id>/status",
+    api.add_resource(SingleMessageStatus, "/messages/<string:id>/status",
         resource_class_kwargs={"bot": bot}
     )
 
@@ -60,10 +60,9 @@ class BOT_Launch:
     Creates instances of channels
     """
     def __init__(self):
-        self.queue_in_irc = Queue()
-        self.queue_out_irc = Queue()
+        self.queue_in = Queue()
+        self.queue_out = Queue()
 
     def create_thread(self):
         # FIXME this is horrible solution
-        threading.Thread(target=run_irc, kwargs={"queue_in": self.queue_in_irc,
-                            "queue_out": self.queue_out_irc}).start()
+        threading.Thread(target=run_irc, kwargs={"queue_in": self.queue_in, "queue_out": self.queue_out}).start()

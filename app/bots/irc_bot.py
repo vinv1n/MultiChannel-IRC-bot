@@ -200,17 +200,20 @@ class IRC:
         """
         entry_type = data.get("type")
         if entry_type == "message":
+            log.critical("%s", pprint.pformat(data))
             message = data.get("message")
             users = data.get("users")
             msg = MessageParser.parse_outgoing_messages(message=message)  # parse message string to me correct format
 
             status = self.send_message(users=users, msg=message)
-
         elif entry_type == "status":
             # do da handling in api
-            message_id = data.get("message_id")
-            users = data.get("user")
-            self._determine_if_msg_recived(user=users, message_id=message_id)
+            timestamp = data.get("sent")
+            users = data.get("sent_to")
+            self._determine_if_msg_recived(user=users, timestamp=timestamp)
+        elif entry_type == "stop":
+            log.info("Irc bot is shutting down")
+            self.running = False
 
 
 def run_irc(*args, **kwargs):
@@ -289,7 +292,8 @@ class MessageParser:
                 return channel
             return MessageParser._get_sender(message=message)
         except (IndexError, TypeError, AttributeError) as e:
-            log.debug("Channel could nei be parsed from message")
+            log.debug("Channel could not be parsed from message. Error %s", e)
+
         return ""
 
     @staticmethod
