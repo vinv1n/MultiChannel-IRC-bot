@@ -1,11 +1,12 @@
 import pymongo
 import logging
+import json
 
 logger = logging.getLogger(__name__)
 
 
 class Database:
-
+    # TODO add checks to which message user responses
     def __init__(self):
 
         self.database = Database._create_database()
@@ -25,3 +26,15 @@ class Database:
 
     def create_collections(self):
         return self.database['messages']
+
+    def add_item(self, item):
+        """
+        Adds item to database
+        for now this is enough
+        """
+        data = json.loads(item)
+        if not isinstance(data, dict):
+            return False
+
+        self.collection.insert_one(item)
+        return True

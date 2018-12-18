@@ -154,8 +154,15 @@ class IRC:
             command(result_dict)
 
 
-    def handle_response(self):
-        pass
+    def handle_response(self, parse_result):
+        """
+        Inserts parse result to queue and passes it to api
+        """
+        try:
+            self.queue_out.put(parse_result)
+        except Exception as e:
+            log.warning("Error %s in queue", e)
+
 
     def print_help(self, parse_result):
         """
@@ -203,9 +210,12 @@ class IRC:
             log.critical("%s", pprint.pformat(data))
             message = data.get("message")
             users = data.get("users")
-            msg = MessageParser.parse_outgoing_messages(message=message)  # parse message string to me correct format
+            # TODO finish parser
+            # msg = MessageParser.parse_outgoing_messages(message=message)  # parse message string to me correct format
 
             status = self.send_message(users=users, msg=message)
+
+            return status
         elif entry_type == "status":
             # do da handling in api
             timestamp = data.get("sent")

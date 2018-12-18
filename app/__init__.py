@@ -14,6 +14,8 @@ from flask_restful import Api, Resource
 from queue import Queue
 from app.bots.irc_bot import run_irc
 
+from app.database.database import Database
+
 # resources
 from app.resources.messages import Messages, SingleMessage, SingleMessageStatus
 
@@ -37,8 +39,9 @@ def create_api():
 
     api = Api(app)
 
+    db = Database()
     # start irc thread
-    bot = BOT_Launch()
+    bot = BOT_Launch(database=db)
     bot.create_thread()
 
     # Api resources
@@ -59,10 +62,22 @@ class BOT_Launch:
     """
     Creates instances of channels
     """
-    def __init__(self):
+    def __init__(self, database):
         self.queue_in = Queue()
         self.queue_out = Queue()
+
+        self.database = database
 
     def create_thread(self):
         # FIXME this is horrible solution
         threading.Thread(target=run_irc, kwargs={"queue_in": self.queue_in, "queue_out": self.queue_out}).start()
+        threading.Timer(15, self.get_queue_items).start()
+
+    def get_queue_items(self):
+        if self.queue_out.empty():
+            return False
+
+        item = self.queue_out.get()
+        success = self.database.add_item(item)
+        return success
+
