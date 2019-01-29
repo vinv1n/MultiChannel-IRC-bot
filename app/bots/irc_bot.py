@@ -39,6 +39,13 @@ class IRC:
         else:
             self.default_channels = ["#vinvin.bot"]  # FIXME
 
+    def join_channel(self, channel):
+        try:
+            self.socket.send("JOIN {}\r\n".format(channel).encode("utf-8"))
+        except Exception:
+            return False
+        return True
+
     def connect_to_server(self):
         """
         Creates connection to IRC server
@@ -207,13 +214,11 @@ class IRC:
         """
         entry_type = data.get("type")
         if entry_type == "message":
-            log.critical("%s", pprint.pformat(data))
+            user = data.get("receiver")
             message = data.get("message")
-            users = data.get("users")
-            # TODO finish parser
-            # msg = MessageParser.parse_outgoing_messages(message=message)  # parse message string to me correct format
+            message = "Message id {} {}".format(data.get("_id"), message)
 
-            status = self.send_message(users=users, msg=message)
+            status = self.send_message(users=user, msg=message)
 
             return status
         elif entry_type == "status":
@@ -269,14 +274,15 @@ class MessageParser:
             "message": "",
             "command": None,
             "channel": MessageParser._get_channel(message=message),
-            "sender": MessageParser._get_sender(message=message)
+            "user": MessageParser._get_sender(message=message)
         }
         try:
             msg = message.split(':')[-1]
             command = commands.get(msg)
             if command:
                 parse_result['command'] = command
-            parse_result['message'] = msg
+            parse_result['message'] = msg.split()[1]
+            parse_result["message_id"] = msg.split()[0]
 
         except (IndexError, TypeError) as e:
             log.debug("Error during message parsing. Error: %s", e)

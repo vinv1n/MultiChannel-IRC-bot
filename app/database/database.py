@@ -1,6 +1,7 @@
 import pymongo
 import logging
 import json
+from bson.objectid import ObjectId
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +26,7 @@ class Database:
             return None
 
     def create_collections(self):
-        return self.database['messages']
+        return self.database['irc_messages']
 
     def add_item(self, item):
         """
@@ -38,3 +39,24 @@ class Database:
 
         self.collection.insert_one(item)
         return True
+
+    def get_message(self, message_id):
+        """Get a message from database with given ID.
+
+        :param string message_id: the ID of the message.
+        :return: the message data as a dictionary."""
+
+        try:
+            cursor =  self.database.message_collection.find({'message_id': ObjectId(message_id)})
+            message = {}
+            for item in cursor:
+                for key in item:
+                    if key == "_id":
+                        message.update({ key : str(item[key]) })
+                    else:
+                        message.update({ key : item[key] })
+            return message
+        except Exception as e:
+            logger.critical("Error during data handling. Error: %s", e)
+            return None
+

@@ -17,7 +17,7 @@ from app.bots.irc_bot import run_irc
 from app.database.database import Database
 
 # resources
-from app.resources.messages import Messages, SingleMessage, SingleMessageStatus
+from app.resources.messages import Messages, SingleMessage, SingleMessageStatus, JoinChannel
 
 logger = logging.getLogger(__name__)
 handler = logging.StreamHandler()
@@ -52,6 +52,9 @@ def create_api():
         resource_class_kwargs={"bot": bot}
     )
     api.add_resource(SingleMessageStatus, "/messages/<string:id>/status",
+        resource_class_kwargs={"bot": bot}
+    )
+    api.add_resource(JoinChannel, "/join/<string:channel>",
         resource_class_kwargs={"bot": bot}
     )
 

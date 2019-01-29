@@ -35,12 +35,13 @@ class Messages(Resource):
 
 class SingleMessage(Resource):
 
-    def __init__(self, bot):
+    def __init__(self, bot, db):
+        self.db = db
         self.bot = bot
 
-    def get(self, id):
-        # disabled for now
-        pass
+    def get(self, id_):
+        result = self.db.get_message(id_)
+        return result
 
 
 class SingleMessageStatus(Resource):
@@ -70,3 +71,11 @@ def decode_message(data):
     except Exception as e:
         logger.debug("Incorrect message type. Error %s", e)
         return None
+
+class JoinChannel(Resource):
+    def __init__(self, bot):
+        self.bot = bot
+
+    def post(self, channel):
+        success = self.bot.join_channel(channel)
+        return success
