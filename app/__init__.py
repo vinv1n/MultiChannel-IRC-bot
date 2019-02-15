@@ -45,8 +45,8 @@ def create_api():
     bot.create_thread()
 
     # Api resources
-    api.add_resource(Messages, "/messages/send",
-        resource_class_kwargs={"bot": bot}
+    api.add_resource(Messages, "/messages/",
+        resource_class_kwargs={"bot": bot, "database": db}
     )
     api.add_resource(SingleMessage, "/messages/<string:id>",
         resource_class_kwargs={"bot": bot}

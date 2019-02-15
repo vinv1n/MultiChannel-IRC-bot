@@ -40,6 +40,25 @@ class Database:
         self.collection.insert_one(item)
         return True
 
+    def get_messages(self):
+        try:
+            results = []
+            cursor = self.database.message_collection.find({ })
+            for message in cursor:
+                entry = {}
+                for key in message:
+                    if key == "_id":
+                        entry.update({ key : str(message[key]) })
+                    else:
+                        entry.update({ key : message[key] })
+
+                    results.append(entry)
+
+            return results
+
+        except Exception as e:
+            logger.warning("Error during database handling. Error %s", e)
+
     def get_message(self, message_id):
         """Get a message from database with given ID.
 

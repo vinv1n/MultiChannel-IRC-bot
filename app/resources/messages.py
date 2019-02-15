@@ -13,8 +13,17 @@ class Messages(Resource):
     or regular json.
     """
 
-    def __init__(self, bot):
+    def __init__(self, bot, database):
         self.bot = bot
+        self.database = database
+
+    def get(self):
+        results = self.database.get_messages()
+        if not results:
+            return {}, 200
+
+        return {"messages": results}, 200
+
 
     def post(self):
         data = request.get_json()
