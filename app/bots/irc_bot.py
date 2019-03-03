@@ -3,6 +3,7 @@ import json
 import logging
 import pprint
 import os
+import time
 
 from socket import AF_INET, SOCK_STREAM, AF_INET6
 
@@ -11,7 +12,7 @@ log = logging.getLogger(__name__)
 
 class IRC:
 
-    def __init__(self, queue_in, queue_out, channels=None, nickname=None):
+    def __init__(self, queue_in, queue_out, channels=[], nickname=None):
         self.running = False
 
         # connection
@@ -33,11 +34,7 @@ class IRC:
 
         self.commands = self._setup_commands()
 
-        # channels that bot is joined
-        if channels:
-            self.default_channels = channels
-        else:
-            self.default_channels = ["#vinvin.bot"]  # FIXME
+        self.channels = channels
 
     def join_channel(self, channel):
         try:
@@ -59,8 +56,9 @@ class IRC:
             # define nick
             self.socket.send("NICK {}\r\n".format(self.nickname).encode("utf-8"))
 
-            #self._join_channels()
-            self.socket.send("JOIN {}\r\n".format(self.default_channels[0]).encode("utf-8"))
+            for channel in self.channels:
+                self.socket.send("JOIN {}\r\n".format(channel).encode("utf-8"))
+                time.sleep(1)
 
             return True  # connection was succesful
         except Exception as e:
@@ -69,10 +67,11 @@ class IRC:
 
     def _join_channels(self, channels=None):
         if not channels:
-            channels = self.default_channels
+            channels = self.channels
+
         for channel in channels:
             self.socket.send("JOIN {}\r\n".format(channel).encode("utf-8"))
-            self.default_channels.append(channel)
+            self.channels.append(channel)
 
     def _response_to_ping(self, msg):
         """
@@ -93,7 +92,7 @@ class IRC:
     def get_channels(self):
         return self.default_channels
 
-    def send_message(self, users, msg):
+    def send_message(self, users, msg, msg_id=""):
         """
         Sents message to to all selected users.
 
@@ -107,7 +106,9 @@ class IRC:
                     user = str(user)
                 self.socket.send("PRIVMSG {} :{:}\r\n".format(user, msg).encode('utf-8'))
 
-            self._make_queue_entry({"users": users, "message":msg})
+            if msg_id:
+                self._make_queue_entry({"users": users, "message":msg, "message_id": msg_id})
+
             return True
         except (socket.error, TypeError, AttributeError, ValueError) as e:
             log.critical("Error during senting message. Error: %s", e)
@@ -156,7 +157,10 @@ class IRC:
 
     def handle_incoming_messages(self, data, seen=False):
         result_dict = MessageParser.parse_incoming_messages(data, self.commands)
-        command = result_dict.get("command")
+        if not result_dict:
+            return None
+
+        command = result_dict.get("command", "")
         if command:
             command(result_dict)
 
@@ -166,10 +170,10 @@ class IRC:
         Inserts parse result to queue and passes it to api
         """
         try:
-            self.queue_out.put(parse_result)
+            return self._make_queue_entry(parse_result)
         except Exception as e:
             log.warning("Error %s in queue", e)
-
+            return None
 
     def print_help(self, parse_result):
         """
@@ -189,8 +193,10 @@ class IRC:
 
     def _make_queue_entry(self, data):
         """
+        Adds item to the queue to be added into database.
         """
         try:
+            del data['command']  # internal command should not be saved into database
             self.queue_out.put(data)
         except Exception as e:
             log.critical("Data cannot be queued. Error %s", e)
@@ -214,11 +220,11 @@ class IRC:
         """
         entry_type = data.get("type")
         if entry_type == "message":
-            user = data.get("receiver")
-            message = data.get("message")
+            user = data.get("receiver", "")
+            message = data.get("message", "")
             message = "Message id {} {}".format(data.get("_id"), message)
 
-            status = self.send_message(users=user, msg=message)
+            status = self.send_message(users=user, msg=message, msg_id=data.get("_id"))
 
             return status
         elif entry_type == "status":
@@ -252,16 +258,6 @@ class MessageParser:
     """
 
     @staticmethod
-    def parse_outgoing_messages(message):
-        """
-        Parses massege body and makes is correct format for irc.
-
-        :param message: message to be parsed
-        :return: parsed message string
-        """
-        return ""
-
-    @staticmethod
     def parse_incoming_messages(message, commands):
         """
         Parser for messages that are sent to the bot.
@@ -278,14 +274,24 @@ class MessageParser:
         }
         try:
             msg = message.split(':')[-1]
-            command = commands.get(msg)
+            if not msg:
+                return ""
+
+            if not msg.startswith("!"):
+                return ""
+
+            msg = msg.split()
+            command = commands.get(msg[0])
             if command:
                 parse_result['command'] = command
-            parse_result['message'] = msg.split()[1]
-            parse_result["message_id"] = msg.split()[0]
+                if command == "!help":
+                    return parse_result
+
+            parse_result["message_id"] = msg[1]
+            parse_result['message'] = msg[2]
 
         except (IndexError, TypeError) as e:
-            log.debug("Error during message parsing. Error: %s", e)
+            log.warning("Error during message parsing. Error: %s", e)
             return parse_result
 
         return parse_result
@@ -296,9 +302,7 @@ class MessageParser:
             sender = message.split("!")[0].strip(":")
             return sender
         except IndexError:
-            log.debug("Sender could not be parsed")
-
-        return ""
+            return ""
 
     @staticmethod
     def _get_channel(message):
@@ -307,10 +311,8 @@ class MessageParser:
             if channel.find("MultiChannelBot") == -1:
                 return channel
             return MessageParser._get_sender(message=message)
-        except (IndexError, TypeError, AttributeError) as e:
-            log.debug("Channel could not be parsed from message. Error %s", e)
-
-        return ""
+        except (IndexError, TypeError, AttributeError):
+            return ""
 
     @staticmethod
     def parse_idle_time(message):

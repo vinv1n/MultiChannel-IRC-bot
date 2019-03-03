@@ -2,6 +2,7 @@ import pymongo
 import logging
 import json
 from bson.objectid import ObjectId
+from pymongo import MongoClient
 
 logger = logging.getLogger(__name__)
 
@@ -19,23 +20,28 @@ class Database:
     @staticmethod
     def _create_database():
         try:
-            db = pymongo.MongoClient(host="mongo:27017")
+            db = MongoClient(host="mongo:27017")
             return db
         except Exception as e:
             logger.critical("Could not create database. Error %s", e)
             return None
 
     def create_collections(self):
-        return self.database['irc_messages']
+        return self.database['irc']["messages"]
 
     def add_item(self, item):
         """
         Adds item to database
         for now this is enough
         """
-        data = json.loads(item)
-        if not isinstance(data, dict):
-            return False
+        logger.warning("%s", item)
+        if not isinstance(item, dict):
+            try:
+                item = json.load(item)
+            except AttributeError:
+                return False
+
+        logger.warning("Item %s added to database")
 
         self.collection.insert_one(item)
         return True
@@ -71,9 +77,9 @@ class Database:
             for item in cursor:
                 for key in item:
                     if key == "_id":
-                        message.update({ key : str(item[key]) })
+                        message.update({key : str(item[key])})
                     else:
-                        message.update({ key : item[key] })
+                        message.update({key : item[key]})
             return message
         except Exception as e:
             logger.critical("Error during data handling. Error: %s", e)

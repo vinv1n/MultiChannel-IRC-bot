@@ -1,10 +1,6 @@
-"""
-This is really simple implementation of API for IRC bot.
-This have to make it's own database to handle stuff
-"""
-
 import logging
 import threading
+import time
 
 # flask stuffenings
 from flask import Flask, render_template
@@ -74,13 +70,15 @@ class BOT_Launch:
     def create_thread(self):
         # FIXME this is horrible solution
         threading.Thread(target=run_irc, kwargs={"queue_in": self.queue_in, "queue_out": self.queue_out}).start()
-        threading.Timer(15, self.get_queue_items).start()
+        threading.Thread(target=self.get_queue_items).start()
 
     def get_queue_items(self):
-        if self.queue_out.empty():
-            return False
+        while True:
+            if not self.queue_out.empty():
+                item = self.queue_out.get()
+                logger.info("%s", item)
+                success = self.database.add_item(item)
+                logger.info("Message %s", success)
 
-        item = self.queue_out.get()
-        success = self.database.add_item(item)
-        return success
+            time.sleep(2)
 
