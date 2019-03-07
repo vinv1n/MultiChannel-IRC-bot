@@ -1,6 +1,8 @@
 import logging
 import threading
 import time
+import os
+import json
 
 # flask stuffenings
 from flask import Flask, render_template
@@ -67,9 +69,39 @@ class BOT_Launch:
 
         self.database = database
 
+    def _load_config(self):
+        def load_config():
+            conf = None
+            try:
+                with open(os.path.join(os.getcwd(), "config.json"), "r") as config:
+                    conf = json.loads(config.read())
+            except (IOError, OSError, KeyError):
+                return None
+
+            if not conf:
+                return {}
+
+            return conf["irc"]
+
+        conf = load_config()
+
+        nick = None
+        server = None
+        channels = None
+        try:
+            nick = conf["nickname"]
+            server = conf["server"]
+            channels = conf["channels"]
+        except KeyError:
+            return None, None, None
+
+        return nick, channels, server
+
     def create_thread(self):
-        # FIXME this is horrible solution
-        threading.Thread(target=run_irc, kwargs={"queue_in": self.queue_in, "queue_out": self.queue_out}).start()
+        nick, channels, server = self._load_config()
+
+        threading.Thread(target=run_irc, kwargs={"queue_in": self.queue_in, "queue_out": self.queue_out,
+                            "channels": channels, "nickname": nick, "server": server}).start()
         threading.Thread(target=self.get_queue_items).start()
 
     def get_queue_items(self):

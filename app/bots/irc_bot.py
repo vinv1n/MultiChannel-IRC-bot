@@ -12,13 +12,17 @@ log = logging.getLogger(__name__)
 
 class IRC:
 
-    def __init__(self, queue_in, queue_out, channels=[], nickname=None):
+    def __init__(self, queue_in, queue_out, channels=[], server="", nickname=None):
         self.running = False
 
         # connection
         self.socket = socket.socket(AF_INET, SOCK_STREAM)
         self.port = 6667
-        self.address = "irc.nebula.fi"
+
+        if not server:
+            self.address = "irc.nebula.fi"
+        else:
+            self.address = server
 
         # queues to comminicate outside of thread
         self.queue_in = queue_in
