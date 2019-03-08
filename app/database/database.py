@@ -49,7 +49,7 @@ class Database:
     def get_messages(self):
         try:
             results = []
-            cursor = self.database.message_collection.find({ })
+            cursor = self.collection.find({})
             for message in cursor:
                 entry = {}
                 for key in message:
@@ -59,7 +59,7 @@ class Database:
                         entry.update({ key : message[key] })
 
                     results.append(entry)
-
+            logger.warning("%s", results)
             return results
 
         except Exception as e:

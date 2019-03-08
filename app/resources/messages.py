@@ -20,7 +20,7 @@ class Messages(Resource):
     def get(self):
         results = self.database.get_messages()
         if not results:
-            return {}, 200
+            return {"messages": "No messages"}, 200
 
         return {"messages": results}, 200
 
